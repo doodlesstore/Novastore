@@ -621,7 +621,7 @@ setInterval(()=>{
 // Nova Stone wallet connect + live mint wiring.
 // NOVA_CONTRACT is empty until the contract is deployed; the site builder
 // fills it in after deployment, then the mint button activates.
-var NOVA_CONTRACT = "";
+var NOVA_CONTRACT = "0x889b917A7E4103095457e0eE6C15c65DC630E0aD";
 var novaAccount = null;
 function novaProvider(){ if (window.okxwallet) return window.okxwallet; if (window.ethereum) return window.ethereum; return null; }
 function novaHexToInt(h){ return parseInt(h, 16); }
