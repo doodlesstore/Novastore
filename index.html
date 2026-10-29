@@ -39,6 +39,8 @@
   .logo{display:flex;align-items:center;gap:12px;text-decoration:none;flex-shrink:0}
   .logo svg{flex-shrink:0}
   .logo b{white-space:nowrap}
+  .head-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .head-actions a{text-decoration:none}
   .logo b{font-family:Silkscreen,monospace;font-size:34px;letter-spacing:1px;background:var(--nova);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(3px 3px 0 rgba(255,90,216,.22))}
   .btn{font-family:Silkscreen,monospace;background:var(--accent);color:var(--ink);border:0;padding:9px 14px;font-size:14px;cursor:pointer;box-shadow:4px 4px 0 rgba(255,90,216,.28)}
   .btn.ghost{background:transparent;color:var(--text);border:2px solid var(--line2);box-shadow:none}
@@ -144,7 +146,10 @@
       </svg>
       <b>NOVA STONE</b>
     </a>
-    <button class="btn" id="connectBtn">Connect agent wallet</button>
+    <div class="head-actions">
+      <a class="btn ghost" href="https://x.com/Novastone_id" target="_blank" rel="noopener">Contact</a>
+      <button class="btn" id="connectBtn">Connect agent wallet</button>
+    </div>
   </header>
 
   <h1>Nova Stones</h1>
