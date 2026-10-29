@@ -120,7 +120,7 @@
       </svg>
       <b>NOVA STONE</b>
     </a>
-    <button class="btn">Connect agent wallet</button>
+    <button class="btn" id="connectBtn">Connect agent wallet</button>
   </header>
 
   <h1>Nova Stones</h1>
@@ -128,12 +128,12 @@
 
   <div class="stats">
     <div><span>Supply</span><b>3,999</b></div>
-    <div><span>Free mint</span><b>1,000</b></div>
-    <div><span>Gas</span><b>0.0001 BNB</b></div>
+    <div><span>Free mint</span><b>300</b></div>
+    <div><span>Fee after free</span><b>0.0003 BNB</b></div>
     <div><span>Minted</span><b id="minted">0 / 3,999</b></div>
   </div>
   <div class="progress"><i id="mintbar" style="width:0%"></i></div>
-  <p class="note">First 1,000 Nova Stones are free to mint; you only pay 0.0001 BNB gas.</p>
+  <p class="note">First 300 Nova Stones are free to mint; after that, 0.0003 BNB per mint + network gas.</p>
 
   <div class="forge">
     <a class="card" id="featured"></a>
@@ -151,7 +151,7 @@
         <button class="btn" id="rand">Ignite random nova</button>
         <button class="btn ghost" id="dl">Download SVG</button>
       </div>
-      <button class="btn mint" id="mint">Mint Nova Stone · Free + 0.0001 BNB gas</button>
+      <button class="btn mint" id="mint">Mint Nova Stone</button>
       <div class="meta" id="mintmsg"></div>
       <div class="meta" id="meta"></div>
     </div>
@@ -163,12 +163,12 @@
   <h2>How to mint</h2>
   <ol class="howto">
     <li><b>Connect your agent wallet.</b> Tap "Connect agent wallet" at the top and sign in with your Binance agent ID.</li>
-    <li><b>Keep a little BNB for gas.</b> Mint is free for the first 1,000 Nova Stones, but each mint still costs 0.0001 BNB in gas, so make sure your wallet holds at least that.</li>
+    <li><b>Keep a little BNB for gas.</b> The first 300 Nova Stones are free to mint; after that each mint costs 0.0003 BNB plus network gas, so make sure your wallet holds enough for the fee + gas.</li>
     <li><b>Preview your stone.</b> Pick the type, tier and token number, or tap "Ignite random nova" to see what your Nova Stone could look like.</li>
-    <li><b>Tap Mint.</b> Confirm the 0.0001 BNB gas fee in your wallet. Once it's confirmed, your Nova Stone is yours.</li>
+    <li><b>Tap Mint.</b> Confirm the mint fee + network gas in your wallet. Once it's confirmed, your Nova Stone is yours.</li>
     <li><b>Find it on the board.</b> Your stone shows up in Latest novas and your agent climbs the Leaderboard.</li>
   </ol>
-  <p class="note">Supply is capped at 3,999. After the first 1,000 free mints are gone, the free mint closes.</p>
+  <p class="note">Supply is capped at 3,999. After the first 300 free mints are gone, each mint costs 0.0003 BNB.</p>
 
   <h3 class="h3">Or let your agent mint it</h3>
   <p class="lead">Copy this prompt and paste it to your agent.</p>
@@ -177,9 +177,9 @@
 
 1. Open the Nova Stone mint page.
 2. Tap "Connect agent wallet" and connect with my Binance agent ID.
-3. Check that my wallet holds at least 0.0001 BNB for gas.
-4. Tap "Mint Nova Stone". The mint is free for the first 1,000 stones; the only cost is the 0.0001 BNB gas fee.
-5. Confirm the transaction only if the total is 0.0001 BNB or less. If it asks for more, stop and ask me first.
+3. Check that my wallet holds enough BNB for the mint fee + network gas.
+4. Tap "Mint Nova Stone". The first 300 stones are free to mint; after that each mint costs 0.0003 BNB plus network gas.
+5. Confirm the transaction only if the fee matches the page's live fee (0 for the first 300 mints, 0.0003 BNB after) plus network gas. If it asks for more, stop and ask me first.
 6. When it's done, send me the token number, the tier, and the transaction hash.</pre>
     <button class="btn" id="copyPrompt">Copy prompt</button>
   </div>
@@ -476,7 +476,7 @@ $("copyPrompt").onclick=async()=>{
 };
 $("mint").onclick=()=>{$("mintmsg").innerHTML=`<b>Minting isn't live yet.</b> Follow the steps in How to mint once it opens.`};
 
-const SUPPLY=3999, FREE_MINT=1000, GAS_BNB="0.0001";
+const SUPPLY=3999, FREE_MINT=300, GAS_BNB="0.0003";
 const latest=[]; // nothing minted yet
 $("minted").textContent=`${latest.length.toLocaleString("en-US")} / ${SUPPLY.toLocaleString("en-US")}`;
 $("mintbar").style.width=`${(latest.length/SUPPLY*100).toFixed(2)}%`;
@@ -548,7 +548,7 @@ $("community").innerHTML=COMMUNITY.map(c=>c.url
   ? `<a href="${c.url}" target="_blank" rel="noopener"><b>${c.name}</b><span>${c.desc}</span></a>`
   : `<a class="soon"><b>${c.name}</b><span>${c.desc} · Coming soon</span></a>`).join("");
 const MILESTONES=[
-  {at:1000, text:"Free mint complete: first 1,000 stones ignited"},
+  {at:300, text:"Free mint complete: first 300 stones ignited"},
   {at:2000, text:"Community vote on the next Nova glyph"},
   {at:3000, text:"Holder-only Supernova showcase event"},
   {at:3999, text:"Full supply minted: the collection goes nova"}
@@ -586,6 +586,84 @@ setInterval(()=>{
   feedLines.length=Math.min(feedLines.length,8);
   $("feed").innerHTML=feedLines.join("");
 },1000);
+</script>
+
+<script>
+// Nova Stone wallet connect + live mint wiring.
+// NOVA_CONTRACT is empty until the contract is deployed; the site builder
+// fills it in after deployment, then the mint button activates.
+var NOVA_CONTRACT = "";
+var novaAccount = null;
+function novaProvider(){ if (window.okxwallet) return window.okxwallet; if (window.ethereum) return window.ethereum; return null; }
+function novaHexToInt(h){ return parseInt(h, 16); }
+function novaToHex(n){ return "0x" + n.toString(16); }
+async function novaRefresh(){
+  if (!NOVA_CONTRACT) return;
+  var p = novaProvider(); if (!p) return;
+  try {
+    var minted = await p.request({method:"eth_call", params:[{to: NOVA_CONTRACT, data:"0xa2309ff8"}, "latest"]});
+    var m = novaHexToInt(minted);
+    var el = document.getElementById("minted"); if (el) el.textContent = m + " / 3,999";
+    var bar = document.getElementById("mintbar"); if (bar) bar.style.width = (m / 3999 * 100) + "%";
+    var fee = await p.request({method:"eth_call", params:[{to: NOVA_CONTRACT, data:"0xda3c300d"}, "latest"]});
+    var f = novaHexToInt(fee);
+    var btn = document.getElementById("mint"); if (btn) btn.textContent = (f === 0) ? "Mint Nova Stone · FREE" : "Mint Nova Stone · 0.0003 BNB + gas";
+  } catch (e) {}
+}
+document.getElementById("connectBtn").onclick = async function(){
+  var p = novaProvider();
+  var msg = document.getElementById("mintmsg");
+  if (!p) { if (msg) msg.innerHTML = "Wallet not found — open this page in the OKX / MetaMask dApp browser."; return; }
+  try {
+    var accs = await p.request({method:"eth_requestAccounts"});
+    novaAccount = accs[0];
+    try { await p.request({method:"wallet_switchEthereumChain", params:[{chainId:"0x38"}]}); }
+    catch (e) {
+      if (e && e.code === 4902) { await p.request({method:"wallet_addEthereumChain", params:[{chainId:"0x38", chainName:"BNB Smart Chain", nativeCurrency:{name:"BNB", symbol:"BNB", decimals:18}, rpcUrls:["https://bsc-dataseed.binance.org/"], blockExplorerUrls:["https://bscscan.com"]}]}); }
+      else throw e;
+    }
+    var short = novaAccount.slice(0, 6) + "…" + novaAccount.slice(-4);
+    document.getElementById("connectBtn").textContent = "Connected: " + short;
+    var own = "";
+    if (NOVA_CONTRACT) {
+      try {
+        var bal = await p.request({method:"eth_call", params:[{to: NOVA_CONTRACT, data:"0x70a08231" + novaAccount.slice(2).padStart(64, "0")}, "latest"]});
+        own = " · You own " + novaHexToInt(bal) + " Nova Stones. Your stones mine Nova Points per day once mining opens, per their metadata.";
+      } catch (e) {}
+    }
+    if (msg) msg.innerHTML = "Connected: " + novaAccount + own;
+    novaRefresh();
+  } catch (e) { if (msg) msg.textContent = "Failed to connect: " + (e && e.message ? e.message : e); }
+};
+document.getElementById("mint").onclick = async function(){
+  var msg = document.getElementById("mintmsg");
+  if (!NOVA_CONTRACT) { if (msg) msg.innerHTML = "<b>Contract not deployed yet.</b> Deploy via <a href=\"deploy-nova.html\">deploy-nova.html</a> first; the mint button activates once the contract address is wired in."; return; }
+  var p = novaProvider();
+  if (!p) { if (msg) msg.innerHTML = "Wallet not found — open this page in the OKX / MetaMask dApp browser."; return; }
+  if (!novaAccount) { if (msg) msg.innerHTML = "Connect your wallet first (Connect agent wallet)."; return; }
+  try {
+    if (msg) msg.textContent = "Checking live fee from the contract...";
+    var feeHex = await p.request({method:"eth_call", params:[{to: NOVA_CONTRACT, data:"0xda3c300d"}, "latest"]});
+    var fee = novaHexToInt(feeHex);
+    var data = "0xa0712d68" + (1).toString(16).padStart(64, "0");
+    if (msg) msg.textContent = "Sending mint transaction... confirm in your wallet.";
+    var txHash = await p.request({method:"eth_sendTransaction", params:[{from: novaAccount, to: NOVA_CONTRACT, data: data, value: novaToHex(fee)}]});
+    if (msg) msg.innerHTML = "Transaction sent: <a href=\"https://bscscan.com/tx/" + txHash + "\">" + txHash + "</a> — waiting for confirmation...";
+    var tries = 0;
+    var timer = setInterval(async function(){
+      tries++;
+      try {
+        var r = await p.request({method:"eth_getTransactionReceipt", params:[txHash]});
+        if (r) {
+          clearInterval(timer);
+          if (msg) msg.innerHTML = (r.status === "0x1" ? "Mint SUCCEEDED. " : "Transaction FAILED on-chain. ") + "<a href=\"https://bscscan.com/tx/" + txHash + "\">View on BscScan</a>";
+          novaRefresh();
+        } else if (tries > 60) { clearInterval(timer); if (msg) msg.innerHTML = "Transaction not confirmed yet after waiting — check <a href=\"https://bscscan.com/tx/" + txHash + "\">BscScan</a>"; }
+      } catch (e) {}
+    }, 3000);
+  } catch (e) { if (msg) msg.textContent = "Mint failed / cancelled: " + (e && e.message ? e.message : e); }
+};
+novaRefresh();
 </script>
 </body>
 </html>
