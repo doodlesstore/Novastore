@@ -121,7 +121,7 @@ document.getElementById("setUriBtn").onclick = async function(){
   var data = "0x55f804b3" + encodeStringArg(u);
   try {
     var h = await p.request({method:"eth_sendTransaction", params:[{from: account, to: c, data: data}]});
-    document.getElementById("uriStatus").textContent = "setBaseURI transaction sent: " + h + ". Verify via step 5.";
+    document.getElementById("uriStatus").textContent = "setBaseURI transaction sent: " + h + ". Verify via step 6.";
   } catch (e) { document.getElementById("uriStatus").textContent = "Failed: " + (e && e.message ? e.message : e); }
 };
 document.getElementById("openBtn").onclick = async function(){
@@ -132,7 +132,7 @@ document.getElementById("openBtn").onclick = async function(){
   var data = "0xf8004d31" + encodeUint(1);
   try {
     var h = await p.request({method:"eth_sendTransaction", params:[{from: account, to: c, data: data}]});
-    document.getElementById("openStatus").textContent = "Open-mint transaction sent: " + h + ". Verify via step 5 (mintOpen must be true).";
+    document.getElementById("openStatus").textContent = "Open-mint transaction sent: " + h + ". Verify via step 6 (mintOpen must be true).";
   } catch (e) { document.getElementById("openStatus").textContent = "Failed: " + (e && e.message ? e.message : e); }
 };
 document.getElementById("wdBtn").onclick = async function(){
@@ -158,6 +158,8 @@ function decodeString(hex){
   return s;
 }
 document.getElementById("checkBtn").onclick = async function(){
+  var p = provider();
+  if (!p) { document.getElementById("checkOut").textContent = "Connect your wallet first (step 1)."; return; }
   var c = document.getElementById("checkInput").value.trim();
   if (!validAddr(c)) { document.getElementById("checkOut").textContent = "Contract address is not valid."; return; }
   try {
