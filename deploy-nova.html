@@ -8,7 +8,7 @@
 <ul>
 <li>MAX_SUPPLY <b>3,999</b>; no per-wallet limit (the site states none).</li>
 <li>Mint fee: first <b>300</b> mints FREE, but max <b>5 free mints per wallet</b> — a wallet's 6th mint costs 0.0003 BNB even inside the first 300, and every mint from 301 on costs <b>0.0003 BNB</b>. Fees are HELD in the contract — the owner collects them with the Withdraw step below (only the owner can withdraw). Network gas is separate and variable.</li>
-<li>Personal wallets only (contract callers are rejected on-chain). No Agent ID gate: any personal wallet may mint.</li>
+<li>Personal wallets only (contract callers are rejected on-chain). No Agent ID gate: any personal wallet may mint, including wallets holding a Binance Agent ID. The site checks the connected wallet's Agent ID status in the Binance registry (0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F) after connect and shows it (display only, not a gate).</li>
 <li>No mining token: Nova Points / mining power live in the metadata and are an off-chain plan, not an on-chain token. <code>mintedByWallet</code> lets anyone read a wallet's minted count (leaderboard input).</li>
 <li><code>tokenURI</code> = baseURI + number + <code>.json</code> (meta files are <code>N.json</code>).</li>
 <li>Mint is <b>CLOSED by default</b> — the owner opens it in step 4, only after baseURI is set.</li>
