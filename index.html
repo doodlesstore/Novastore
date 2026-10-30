@@ -214,7 +214,7 @@
   </div>
 
   <h2>Full collection · 3,999 stones</h2>
-  <p class="note">Every token number from #1 to #3,999 has one fixed Nova Stone: its type and tier are locked by its number, so the whole supply is ready to browse before mint opens.</p>
+  <p class="note">Every token number from #1 to #3,999 has one fixed Nova Stone: its type and tier are locked by its number, so the whole supply is ready to browse while mint is live.</p>
   <table class="tiers" id="supplyTable"></table>
   <div class="filters">
     <label>Type<select id="fKind"><option value="all">All</option><option value="collab">Collab</option><option value="solo">Solo</option></select></label>
@@ -503,7 +503,6 @@ $("copyPrompt").onclick=async()=>{
   try{await navigator.clipboard.writeText(txt)}catch(e){const r=document.createRange();r.selectNodeContents($("agentPrompt"));const sel=getSelection();sel.removeAllRanges();sel.addRange(r);document.execCommand("copy")}
   $("copyPrompt").textContent="Copied!";setTimeout(()=>$("copyPrompt").textContent="Copy prompt",1600);
 };
-$("mint").onclick=()=>{$("mintmsg").innerHTML=`<b>Minting isn't live yet.</b> Follow the steps in How to mint once it opens.`};
 
 const SUPPLY=3999, FREE_MINT=300, GAS_BNB="0.0003";
 const latest=[]; // nothing minted yet
@@ -619,8 +618,7 @@ setInterval(()=>{
 
 <script>
 // Nova Stone wallet connect + live mint wiring.
-// NOVA_CONTRACT is empty until the contract is deployed; the site builder
-// fills it in after deployment, then the mint button activates.
+// Live NFT contract (installed by owner): mint is live on this contract.
 var NOVA_CONTRACT = "0x889b917A7E4103095457e0eE6C15c65DC630E0aD";
 var novaAccount = null;
 function novaProvider(){ if (window.okxwallet) return window.okxwallet; if (window.ethereum) return window.ethereum; return null; }
@@ -628,7 +626,18 @@ function novaHexToInt(h){ return parseInt(h, 16); }
 function novaToHex(n){ return "0x" + n.toString(16); }
 async function novaRefresh(){
   if (!NOVA_CONTRACT) return;
-  var p = novaProvider(); if (!p) return;
+  var p = novaProvider();
+  if (!p) {
+    try {
+      var r = await fetch("https://bsc-dataseed.binance.org/", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({jsonrpc:"2.0", id:1, method:"eth_call", params:[{to: NOVA_CONTRACT, data:"0xa2309ff8"}, "latest"]})});
+      var j = await r.json();
+      var m = novaHexToInt(j.result);
+      var el = document.getElementById("minted"); if (el) el.textContent = m + " / 3,999";
+      var bar = document.getElementById("mintbar"); if (bar) bar.style.width = (m / 3999 * 100) + "%";
+      if (m > 0) { var lat = document.getElementById("latest"); if (lat) lat.innerHTML = `<div class="empty"><b>${m} Nova Stones minted so far</b><span>Connect a wallet to mint yours.</span></div>`; }
+    } catch (e) {}
+    return;
+  }
   try {
     var minted = await p.request({method:"eth_call", params:[{to: NOVA_CONTRACT, data:"0xa2309ff8"}, "latest"]});
     var m = novaHexToInt(minted);
