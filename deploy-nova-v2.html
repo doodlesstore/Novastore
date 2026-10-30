@@ -27,8 +27,9 @@
 <p class="small">After deploy, save the contract address and send it to the site builder so the mint button on index.html can be wired to it.</p></div>
 
 <div class="card"><h2>3 · Set baseURI (after deploy, if not set at deploy)</h2>
-<p>Contract address:</p><input id="uriContract" placeholder="0x… Nova Stone contract address">
-<p>New baseURI:</p><input id="uriInput" placeholder="ipfs://YOUR_CID/json/">
+<p>Contract address:</p><input id="uriContract" value="0x889b917A7E4103095457e0eE6C15c65DC630E0aD">
+<p>New baseURI:</p><input id="uriInput" value="https://novacommerce.id/nova/json/">
+<p class="small">Sudah diisi dengan kontrak live dan baseURI metadata yang sudah live (cek: https://novacommerce.id/nova/json/1.json). Trailing slash di akhir WAJIB — tanpanya tokenURI jadi …/json1.json dan rusak.</p>
 <p><button id="setUriBtn">Set baseURI</button></p>
 <p id="uriStatus" class="small"></p></div>
 
@@ -45,7 +46,7 @@
 <p class="small">Mint fees accumulate in the contract. Only the owner can withdraw, and it sends the whole balance to the owner wallet.</p></div>
 
 <div class="card"><h2>6 · Check Contract</h2>
-<p>Contract address:</p><input id="checkInput" placeholder="0x… Nova Stone contract address">
+<p>Contract address:</p><input id="checkInput" value="0x889b917A7E4103095457e0eE6C15c65DC630E0aD">
 <p><button id="checkBtn">Check Contract</button></p>
 <p id="checkOut" class="small"></p>
 <p class="small">Also check on BscScan: <code>https://bscscan.com/token/[contract address]</code> after deploy.</p></div>
