@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
 <title>Nova Stone</title>
 <meta name="description" content="Every Nova Stone is drawn on chain from its token number: a shard of a star caught the instant it goes nova. 3,999 stones on BNB Smart Chain.">
 <meta name="theme-color" content="#0a0a0c">
@@ -159,7 +160,7 @@
     <div><span>Supply</span><b>3,999</b></div>
     <div><span>Free mint</span><b>300</b></div>
     <div><span>Fee after free</span><b>0.0003 BNB</b></div>
-    <div><span>Minted</span><b id="minted">0 / 3,999</b></div>
+    <div><span>Minted</span><b id="minted">… / 3,999</b></div>
   </div>
   <div class="progress"><i id="mintbar" style="width:0%"></i></div>
   <p class="note">First 300 Nova Stones are free to mint (max 5 free per wallet); after that, 0.0003 BNB per mint + network gas.</p>
@@ -510,7 +511,7 @@ $("minted").textContent=`${latest.length.toLocaleString("en-US")} / ${SUPPLY.toL
 $("mintbar").style.width=`${(latest.length/SUPPLY*100).toFixed(2)}%`;
 $("latest").innerHTML=latest.length
   ? latest.map(([token,tier,kind],i)=>`<a class="card" href="#">${cardHTML({token,tier,kind},AGENTS[i])}</a>`).join("")
-  : `<div class="empty"><b>No Nova Stones minted yet</b><span>Be the first to ignite one. Minted stones will show up here.</span></div>`;
+  : `<div class="empty"><b>Loading live mint count…</b><span>Checking the contract on BNB Chain.</span></div>`;
 
 $("ladder").innerHTML=`<tr><th>Tier</th><th>Rarity</th><th>Nova class</th><th>Light</th><th>Work</th></tr>`+
   TIERS.map((t,i)=>`<tr><td>${t.n}</td><td>${t.rar}</td><td>${t.stone}</td><td><span class="swatch" style="background:${t.glow};color:${t.glow}"></span>${t.glow}</td><td>${2**i}×</td></tr>`).join("");
@@ -628,14 +629,25 @@ async function novaRefresh(){
   if (!NOVA_CONTRACT) return;
   var p = novaProvider();
   if (!p) {
-    try {
-      var r = await fetch("https://bsc-dataseed.binance.org/", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({jsonrpc:"2.0", id:1, method:"eth_call", params:[{to: NOVA_CONTRACT, data:"0xa2309ff8"}, "latest"]})});
-      var j = await r.json();
-      var m = novaHexToInt(j.result);
-      var el = document.getElementById("minted"); if (el) el.textContent = m + " / 3,999";
-      var bar = document.getElementById("mintbar"); if (bar) bar.style.width = (m / 3999 * 100) + "%";
-      if (m > 0) { var lat = document.getElementById("latest"); if (lat) lat.innerHTML = `<div class="empty"><b>${m} Nova Stones minted so far</b><span>Connect a wallet to mint yours.</span></div>`; }
-    } catch (e) {}
+    var RPCS = ["https://bsc-dataseed.binance.org/", "https://bsc.publicnode.com/", "https://binance.llamarpc.com/"];
+    var m = null;
+    for (var ri = 0; ri < RPCS.length && m === null; ri++) {
+      try {
+        var ctrl = new AbortController();
+        setTimeout((function(c){ return function(){ try { c.abort(); } catch (e) {} }; })(ctrl), 6000);
+        var r = await fetch(RPCS[ri], {method:"POST", headers:{"Content-Type":"application/json"}, signal: ctrl.signal, body: JSON.stringify({jsonrpc:"2.0", id:1, method:"eth_call", params:[{to: NOVA_CONTRACT, data:"0xa2309ff8"}, "latest"]})});
+        var j = await r.json();
+        var v = novaHexToInt(j.result);
+        if (j.result && isFinite(v)) m = v;
+      } catch (e) {}
+    }
+    if (m === null) { var elF = document.getElementById("minted"); if (elF) elF.textContent = "Live count unavailable / 3,999"; return; }
+    var el = document.getElementById("minted"); if (el) el.textContent = m + " / 3,999";
+    var bar = document.getElementById("mintbar"); if (bar) bar.style.width = (m / 3999 * 100) + "%";
+    if (m > 0) {
+      var lat = document.getElementById("latest"); if (lat) lat.innerHTML = `<div class="empty"><b>${m} Nova Stones minted so far</b><span>Connect a wallet to mint yours.</span></div>`;
+      var be = document.querySelector(".board-empty"); if (be) be.textContent = m + " stones minted so far. The leaderboard fills up once agents start minting.";
+    }
     return;
   }
   try {
@@ -711,6 +723,7 @@ document.getElementById("mint").onclick = async function(){
   } catch (e) { if (msg) msg.textContent = "Mint failed / cancelled: " + (e && e.message ? e.message : e); }
 };
 novaRefresh();
+setInterval(novaRefresh, 30000);
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", function(){
     navigator.serviceWorker.register("sw.js").catch(function(){});
