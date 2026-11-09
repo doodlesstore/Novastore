@@ -88,6 +88,7 @@
   .howto li::before{content:counter(s);position:absolute;left:16px;top:12px;width:30px;height:30px;display:grid;place-items:center;font-family:Silkscreen,monospace;background:var(--nova);color:var(--ink)}
   .howto b{color:var(--text);font-weight:600}
   .btn.mint{width:100%;padding:13px 14px;background:var(--nova);font-size:15px}
+  .btn.mint:disabled{opacity:.5;filter:grayscale(1);cursor:not-allowed}
   .h3{font-family:Silkscreen,monospace;font-weight:400;font-size:18px;margin:30px 0 6px}
   .empty{grid-column:1/-1;border:3px dashed var(--line2);background:var(--panel);padding:48px 20px;text-align:center;display:grid;gap:8px;color:var(--muted);font-size:14px}
   .empty b{font-family:Silkscreen,monospace;font-weight:400;font-size:18px;color:var(--text)}
@@ -128,7 +129,7 @@
 </style>
 </head>
 <body>
-<div style="background:#1a1033;border:1px solid #8f7bff;color:#f1ecf4;padding:12px 16px;margin:0 0 18px;font-size:13px;line-height:1.6"><b>ELYSIUM VERSION — Kinetiq Elysium Mainnet (chain 99901, gas HYPE).</b> Kontrak baru di Elysium akan memakai nama NFT <b>Nova Elysium Stone</b> dengan simbol tetap <b>NOVA</b> — desain dan supply 3,999 tetap sama, dan metadata serta gambar 3,999 token juga diganti namanya menjadi Nova Elysium Stone (name + description di setiap JSON, dan tulisan NOVA ELYSIUM STONE di subtitle setiap gambar SVG). Mint di Elysium belum dibuka — kontrak baru belum di-deploy. Begitu kontrak di-deploy, alamatnya dipasang di halaman ini dan mint dibuka. Yang BNB lama (328 minted, nama lama Nova Stone) tetap di BNB, tidak pindah. RPC mainnet saat ini pakai node komunitas terverifikasi; link explorer mengikuti publikasi resmi Kinetiq.</div>
+<div style="background:#1a1033;border:1px solid #8f7bff;color:#f1ecf4;padding:12px 16px;margin:0 0 18px;font-size:13px;line-height:1.6"><b>ELYSIUM VERSION — Kinetiq Elysium Mainnet (chain 99901, gas HYPE).</b> Kontrak Nova Elysium Stone (NOVA) sudah terpasang di <a href="https://elysium.kinetiq.xyz/explorer/address/0x8c5dbcd7d2eaa2df290ecc944371e18523a1bf2c" target="_blank" rel="noopener">0x8c5DBcd7D2eaa2Df290eCc944371e18523A1bF2c</a>. Mint tetap hanya dari wallet pribadi pengguna—tidak ada mint oleh agent. Situs hanya mengaktifkan tombol mint setelah baseURI on-chain sama dengan <code>https://novacommerce.id/nova/json/</code> dan mintOpen bernilai true. Kontrak lama BNB (328 minted, nama Nova Stone) tetap di BNB.</div>
 <div class="wrap">
   <header>
     <a class="logo" href="#">
@@ -153,7 +154,7 @@
 
   <h1>Nova Elysium Stones</h1>
   <p class="lead">Every Nova Elysium Stone is drawn on chain from its token number: a shard of a star caught the instant it goes nova, its sigil blazing through the cracks as the shockwave tears outward. Every tier, the explosion runs hotter.</p>
-  <p class="meta" style="margin:0 0 16px"><b>NFT name:</b> Nova Elysium Stone &nbsp;·&nbsp; <b>Symbol:</b> NOVA &nbsp;·&nbsp; <b>New contract:</b> Elysium Mainnet (99901)</p>
+  <p class="meta" style="margin:0 0 16px"><b>NFT name:</b> Nova Elysium Stone &nbsp;·&nbsp; <b>Symbol:</b> NOVA &nbsp;·&nbsp; <b>Contract:</b> <a href="https://elysium.kinetiq.xyz/explorer/address/0x8c5dbcd7d2eaa2df290ecc944371e18523a1bf2c" target="_blank" rel="noopener">0x8c5DBcd7D2eaa2Df290eCc944371e18523A1bF2c</a> · Elysium Mainnet (99901)</p>
 
   <div class="stats">
     <div><span>Supply</span><b>3,999</b></div>
@@ -180,7 +181,7 @@
         <button class="btn" id="rand">Ignite random nova</button>
         <button class="btn ghost" id="dl">Download SVG</button>
       </div>
-      <button class="btn mint" id="mint">Mint Nova Elysium Stone</button>
+      <button class="btn mint" id="mint" disabled>Checking live mint status…</button>
       <div class="meta" id="mintmsg"></div>
       <div class="meta" id="meta"></div>
     </div>
@@ -195,7 +196,7 @@
     <li><b>Keep a little HYPE ready.</b> Each mint costs 0.003 HYPE plus network gas, so make sure your wallet holds enough for the price + gas.</li>
     <li><b>Preview your stone.</b> Pick the type, tier and token number, or tap "Ignite random nova" to see what your Nova Elysium Stone could look like.</li>
     <li><b>Tap Mint.</b> Confirm the mint fee + network gas in your wallet. Once it's confirmed, your Nova Elysium Stone is yours.</li>
-    <li><b>Find it on the board.</b> Your stone shows up in Latest novas and your agent climbs the Leaderboard.</li>
+    <li><b>Find it on the board.</b> Your stone appears in Latest novas and the on-chain minted count updates.</li>
   </ol>
   <p class="note">Supply is capped at 3,999. Each mint costs 0.003 HYPE plus network gas.</p>
 
@@ -234,7 +235,7 @@
   <h2>Leaderboard</h2>
   <table class="tiers board" id="leaderboard">
     <tr><th>Rank</th><th>Agent</th><th>Wallet</th><th>Minted</th><th>Top tier</th></tr>
-    <tr><td colspan="5" class="board-empty">No mints yet. The leaderboard fills up once agents start minting.</td></tr>
+    <tr><td colspan="5" class="board-empty">No wallet mints yet. This collection can only be minted directly from a user's own wallet.</td></tr>
   </table>
 
   <h2>Nova ladder</h2>
@@ -491,7 +492,7 @@ $("minted").textContent=`${latest.length.toLocaleString("en-US")} / ${SUPPLY.toL
 $("mintbar").style.width=`${(latest.length/SUPPLY*100).toFixed(2)}%`;
 $("latest").innerHTML=latest.length
   ? latest.map(([token,tier,kind],i)=>`<a class="card" href="#">${cardHTML({token,tier,kind},AGENTS[i])}</a>`).join("")
-  : `<div class="empty"><b>Mint not open yet</b><span>The Elysium contract is not deployed yet — minted stones will appear here once mint opens.</span></div>`;
+  : `<div class="empty"><b>Mint not open yet</b><span>The contract is deployed. Mint is only available after the correct metadata baseURI is set and verified.</span></div>`;
 
 $("ladder").innerHTML=`<tr><th>Tier</th><th>Rarity</th><th>Nova class</th><th>Light</th><th>Work</th></tr>`+
   TIERS.map((t,i)=>`<tr><td>${t.n}</td><td>${t.rar}</td><td>${t.stone}</td><td><span class="swatch" style="background:${t.glow};color:${t.glow}"></span>${t.glow}</td><td>${2**i}×</td></tr>`).join("");
@@ -598,48 +599,69 @@ setInterval(()=>{
 </script>
 
 <script>
-// Nova Elysium Stone wallet connect + live mint wiring.
-// New Elysium contract (not deployed yet): ERC-721 name "Nova Elysium Stone", symbol "NOVA".
-var NOVA_CONTRACT = ""; // Elysium contract not deployed yet — paste the deployed 0x address here after deploy-elysium.html (old BNB contract 0x889b917A7E4103095457e0eE6C15c65DC630E0aD keeps the old name "Nova Stone" and stays on BNB).
+// Nova Elysium Stone wallet connect + live mint wiring. Mint is wallet-only.
+var NOVA_CONTRACT = "0x8c5DBcd7D2Eaa2Df290eCc944371e18523A1bF2c";
+var NOVA_BASE_URI = "https://novacommerce.id/nova/json/";
+var NOVA_MINT_OPEN = false;
 var novaAccount = null;
 function novaProvider(){ if (window.okxwallet) return window.okxwallet; if (window.ethereum) return window.ethereum; return null; }
 function novaHexToInt(h){ return parseInt(h, 16); }
 function novaToHex(n){ return "0x" + n.toString(16); }
+function novaDecodeString(h){
+  try {
+    var raw = String(h || "").replace(/^0x/, "");
+    var offset = parseInt(raw.slice(0, 64), 16) * 2;
+    var length = parseInt(raw.slice(offset, offset + 64), 16);
+    var body = raw.slice(offset + 64, offset + 64 + length * 2);
+    var out = "";
+    for (var i = 0; i < body.length; i += 2) out += String.fromCharCode(parseInt(body.slice(i, i + 2), 16));
+    return out;
+  } catch (e) { return ""; }
+}
+function novaBaseUriMatches(uri){ return String(uri || "").trim().replace(/\/+$/, "") + "/" === NOVA_BASE_URI; }
+async function novaRpc(method, params){
+  var r = await fetch("https://rpc-live.elysp.com/", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({jsonrpc:"2.0", id:Date.now(), method:method, params:params})});
+  if (!r.ok) throw new Error("Elysium RPC returned " + r.status);
+  var j = await r.json();
+  if (!j || j.error || typeof j.result === "undefined") throw new Error(j && j.error && j.error.message ? j.error.message : "Elysium contract read failed");
+  return j.result;
+}
+async function novaContractRead(data){ return novaRpc("eth_call", [{to:NOVA_CONTRACT, data:data}, "latest"]); }
+function novaSetMintState(isOpen, baseUri, failed){
+  NOVA_MINT_OPEN = !!isOpen;
+  var btn = document.getElementById("mint");
+  var msg = document.getElementById("mintmsg");
+  var ready = !!isOpen && novaBaseUriMatches(baseUri);
+  if (btn) {
+    btn.disabled = !ready;
+    btn.textContent = ready ? "Mint Nova Elysium Stone · 0.003 HYPE + gas" : "Mint paused — setup required";
+  }
+  if (!msg) return;
+  if (failed) msg.textContent = "Could not verify live contract settings. Mint stays disabled until Elysium can be checked.";
+  else if (!novaBaseUriMatches(baseUri)) msg.textContent = "Mint is disabled on this site: the contract baseURI is empty or incorrect. Set it to " + NOVA_BASE_URI + " from the owner wallet; mintOpen=" + (!!isOpen) + ".";
+  else if (!isOpen) msg.textContent = "Metadata is ready, but mintOpen is false. The contract owner must open mint from the owner wallet.";
+  else msg.textContent = "Mint is open. Connect your own wallet to mint directly; no agent minting is available.";
+}
 async function novaRefresh(){
   if (!NOVA_CONTRACT) return;
-  var p = novaProvider();
-  if (!p) {
-    var RPCS = ["https://rpc-live.elysp.com", "https://bsc.publicnode.com/", "https://binance.llamarpc.com/"];
-    var m = null;
-    for (var ri = 0; ri < RPCS.length && m === null; ri++) {
-      try {
-        var ctrl = new AbortController();
-        setTimeout((function(c){ return function(){ try { c.abort(); } catch (e) {} }; })(ctrl), 6000);
-        var r = await fetch(RPCS[ri], {method:"POST", headers:{"Content-Type":"application/json"}, signal: ctrl.signal, body: JSON.stringify({jsonrpc:"2.0", id:1, method:"eth_call", params:[{to: NOVA_CONTRACT, data:"0xa2309ff8"}, "latest"]})});
-        var j = await r.json();
-        var v = novaHexToInt(j.result);
-        if (j.result && isFinite(v)) m = v;
-      } catch (e) {}
-    }
-    if (m === null) { var elF = document.getElementById("minted"); if (elF) elF.textContent = "Live count unavailable / 3,999"; return; }
-    var el = document.getElementById("minted"); if (el) el.textContent = m + " / 3,999";
-    var bar = document.getElementById("mintbar"); if (bar) bar.style.width = (m / 3999 * 100) + "%";
-    if (m > 0) {
-      var lat = document.getElementById("latest"); if (lat) lat.innerHTML = `<div class="empty"><b>${m} Nova Elysium Stones minted so far</b><span>Connect a wallet to mint yours.</span></div>`;
-      var be = document.querySelector(".board-empty"); if (be) be.textContent = m + " stones minted so far. The leaderboard fills up once agents start minting.";
-    }
-    return;
-  }
   try {
-    var minted = await p.request({method:"eth_call", params:[{to: NOVA_CONTRACT, data:"0xa2309ff8"}, "latest"]});
-    var m = novaHexToInt(minted);
+    var chain = await novaRpc("eth_chainId", []);
+    if (parseInt(chain, 16) !== 99901) throw new Error("RPC is not Elysium mainnet");
+    var state = await Promise.all([novaContractRead("0xa2309ff8"), novaContractRead("0x24bbd049"), novaContractRead("0x6c0360eb")]);
+    var m = novaHexToInt(state[0]);
+    var isOpen = novaHexToInt(state[1]) === 1;
+    var baseUri = novaDecodeString(state[2]);
     var el = document.getElementById("minted"); if (el) el.textContent = m + " / 3,999";
     var bar = document.getElementById("mintbar"); if (bar) bar.style.width = (m / 3999 * 100) + "%";
-    var feeData = novaAccount ? ("0xd02b2e7d" + novaAccount.slice(2).padStart(64, "0")) : "0xda3c300d";
-    var fee = await p.request({method:"eth_call", params:[{to: NOVA_CONTRACT, data: feeData}, "latest"]});
-    var f = novaHexToInt(fee);
-    var btn = document.getElementById("mint"); if (btn) btn.textContent = "Mint Nova Elysium Stone · 0.003 HYPE + gas";
-  } catch (e) {}
+    novaSetMintState(isOpen, baseUri, false);
+    if (m > 0) {
+      var lat = document.getElementById("latest"); if (lat) lat.innerHTML = `<div class="empty"><b>${m} Nova Elysium Stones minted so far</b><span>Connect your wallet to mint directly.</span></div>`;
+      var be = document.querySelector(".board-empty"); if (be) be.textContent = m + " stones minted from personal wallets.";
+    }
+  } catch (e) {
+    var elF = document.getElementById("minted"); if (elF) elF.textContent = "Live count unavailable / 3,999";
+    novaSetMintState(false, "", true);
+  }
 }
 document.getElementById("connectBtn").onclick = async function(){
   var p = novaProvider();
@@ -669,11 +691,21 @@ document.getElementById("connectBtn").onclick = async function(){
 };
 document.getElementById("mint").onclick = async function(){
   var msg = document.getElementById("mintmsg");
-  if (!NOVA_CONTRACT) { if (msg) msg.innerHTML = "<b>Contract not deployed yet.</b> The Elysium contract still needs to be deployed; the mint button activates once the contract address is wired in."; return; }
+  if (!NOVA_CONTRACT) { if (msg) msg.textContent = "Contract address is not configured."; return; }
   var p = novaProvider();
   if (!p) { if (msg) msg.innerHTML = "Wallet not found — open this page in the OKX / MetaMask dApp browser."; return; }
   if (!novaAccount) { if (msg) msg.innerHTML = "Connect your wallet first (Connect wallet, top of page)."; return; }
   try {
+    var chainId = await p.request({method:"eth_chainId"});
+    if (String(chainId).toLowerCase() !== "0x1863d") throw new Error("Switch your wallet to Elysium (chain 99901) first.");
+    var liveState = await Promise.all([
+      p.request({method:"eth_call", params:[{to:NOVA_CONTRACT, data:"0x24bbd049"}, "latest"]}),
+      p.request({method:"eth_call", params:[{to:NOVA_CONTRACT, data:"0x6c0360eb"}, "latest"]})
+    ]);
+    var isOpen = novaHexToInt(liveState[0]) === 1;
+    var baseUri = novaDecodeString(liveState[1]);
+    novaSetMintState(isOpen, baseUri, false);
+    if (!isOpen || !novaBaseUriMatches(baseUri)) return;
     if (msg) msg.textContent = "Checking live fee from the contract...";
     var feeHex = await p.request({method:"eth_call", params:[{to: NOVA_CONTRACT, data:"0xd02b2e7d" + novaAccount.slice(2).padStart(64, "0")}, "latest"]});
     var fee = novaHexToInt(feeHex);
