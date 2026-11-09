@@ -1,7 +1,7 @@
-/* Nova Stone service worker: makes the site installable and serves the
+/* Nova Elysium Stone service worker: makes the site installable and serves the
    app shell assets offline. Page HTML itself is always network-first so
    updates (mint state, rule texts) are never stuck behind a stale cache. */
-var CACHE = "nova-v1";
+var CACHE = "nova-elysium-v1";
 var SHELL = ["manifest.json", "icon-192.png", "icon-512.png", "icon-512-maskable.png"];
 
 self.addEventListener("install", function (event) {
