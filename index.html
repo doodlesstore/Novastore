@@ -603,6 +603,7 @@ setInterval(()=>{
 var NOVA_CONTRACT = "0x8c5DBcd7D2Eaa2Df290eCc944371e18523A1bF2c";
 var NOVA_BASE_URI = "https://novacommerce.id/nova/json/";
 var NOVA_MINT_OPEN = false;
+var NOVA_STATE_VERIFIED = false;
 var novaAccount = null;
 function novaProvider(){ if (window.okxwallet) return window.okxwallet; if (window.ethereum) return window.ethereum; return null; }
 function novaHexToInt(h){ return parseInt(h, 16); }
@@ -620,7 +621,14 @@ function novaDecodeString(h){
 }
 function novaBaseUriMatches(uri){ return String(uri || "").trim().replace(/\/+$/, "") + "/" === NOVA_BASE_URI; }
 async function novaRpc(method, params){
-  var r = await fetch("https://rpc-live.elysp.com/", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({jsonrpc:"2.0", id:Date.now(), method:method, params:params})});
+  var controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  var timeout = controller ? setTimeout(function(){ controller.abort(); }, 10000) : null;
+  var r;
+  try {
+    r = await fetch("https://rpc-live.elysp.com/", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({jsonrpc:"2.0", id:Date.now(), method:method, params:params}), signal:controller ? controller.signal : undefined});
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
   if (!r.ok) throw new Error("Elysium RPC returned " + r.status);
   var j = await r.json();
   if (!j || j.error || typeof j.result === "undefined") throw new Error(j && j.error && j.error.message ? j.error.message : "Elysium contract read failed");
@@ -629,25 +637,34 @@ async function novaRpc(method, params){
 async function novaContractRead(data){ return novaRpc("eth_call", [{to:NOVA_CONTRACT, data:data}, "latest"]); }
 function novaSetMintState(isOpen, baseUri, failed){
   NOVA_MINT_OPEN = !!isOpen;
+  NOVA_STATE_VERIFIED = !failed;
   var btn = document.getElementById("mint");
   var msg = document.getElementById("mintmsg");
   var ready = !!isOpen && novaBaseUriMatches(baseUri);
   if (btn) {
-    btn.disabled = !ready;
-    btn.textContent = ready ? "Mint Nova Elysium Stone · 0.003 HYPE + gas" : "Mint paused — setup required";
+    btn.disabled = failed ? false : !ready;
+    btn.textContent = ready ? "Mint Nova Elysium Stone · 0.003 HYPE + gas" : (failed ? (novaAccount ? "Check mint status in wallet" : "Connect wallet to check mint status") : "Mint paused — setup required");
   }
   if (!msg) return;
-  if (failed) msg.textContent = "Could not verify live contract settings. Mint stays disabled until Elysium can be checked.";
+  if (failed) msg.textContent = novaAccount ? "Could not verify live contract settings. Check that your wallet is on Elysium and retry the status check; checking status sends no transaction." : "Could not verify live contract settings from the public RPC. Connect your wallet to check the latest status on Elysium; mint is not being claimed ready.";
   else if (!novaBaseUriMatches(baseUri)) msg.textContent = "Mint is disabled on this site: the contract baseURI is empty or incorrect. Set it to " + NOVA_BASE_URI + " from the owner wallet; mintOpen=" + (!!isOpen) + ".";
   else if (!isOpen) msg.textContent = "Metadata is ready, but mintOpen is false. The contract owner must open mint from the owner wallet.";
   else msg.textContent = "Mint is open. Connect your own wallet to mint directly; no agent minting is available.";
 }
 async function novaRefresh(){
   if (!NOVA_CONTRACT) return;
+  var walletRead = !!novaAccount;
   try {
+    if (walletRead) {
+      var p = novaProvider();
+      if (!p) throw new Error("Wallet not found");
+      await novaWalletRefresh(p);
+      return;
+    }
     var chain = await novaRpc("eth_chainId", []);
     if (parseInt(chain, 16) !== 99901) throw new Error("RPC is not Elysium mainnet");
     var state = await Promise.all([novaContractRead("0xa2309ff8"), novaContractRead("0x24bbd049"), novaContractRead("0x6c0360eb")]);
+    if (novaAccount) return; // Ignore a public read started before wallet connection.
     var m = novaHexToInt(state[0]);
     var isOpen = novaHexToInt(state[1]) === 1;
     var baseUri = novaDecodeString(state[2]);
@@ -659,9 +676,24 @@ async function novaRefresh(){
       var be = document.querySelector(".board-empty"); if (be) be.textContent = m + " stones minted from personal wallets.";
     }
   } catch (e) {
+    if (!walletRead && novaAccount) return;
     var elF = document.getElementById("minted"); if (elF) elF.textContent = "Live count unavailable / 3,999";
     novaSetMintState(false, "", true);
   }
+}
+async function novaWalletRefresh(p){
+  var chain = await p.request({method:"eth_chainId"});
+  if (String(chain).toLowerCase() !== "0x1863d") throw new Error("Switch your wallet to Elysium (chain 99901) first.");
+  var state = await Promise.all([
+    p.request({method:"eth_call", params:[{to:NOVA_CONTRACT, data:"0xa2309ff8"}, "latest"]}),
+    p.request({method:"eth_call", params:[{to:NOVA_CONTRACT, data:"0x24bbd049"}, "latest"]}),
+    p.request({method:"eth_call", params:[{to:NOVA_CONTRACT, data:"0x6c0360eb"}, "latest"]})
+  ]);
+  var m = novaHexToInt(state[0]), isOpen = novaHexToInt(state[1]) === 1, baseUri = novaDecodeString(state[2]);
+  var el = document.getElementById("minted"); if (el) el.textContent = m + " / 3,999";
+  var bar = document.getElementById("mintbar"); if (bar) bar.style.width = (m / 3999 * 100) + "%";
+  novaSetMintState(isOpen, baseUri, false);
+  return {isOpen:isOpen, baseUri:baseUri};
 }
 document.getElementById("connectBtn").onclick = async function(){
   var p = novaProvider();
@@ -675,6 +707,7 @@ document.getElementById("connectBtn").onclick = async function(){
       if (e && e.code === 4902) { await p.request({method:"wallet_addEthereumChain", params:[{chainId:"0x1863d", chainName:"Elysium", nativeCurrency:{name:"HYPE", symbol:"HYPE", decimals:18}, rpcUrls:["https://rpc-live.elysp.com"], blockExplorerUrls:["https://elysium.kinetiq.xyz/explorer"]}]}); }
       else throw e;
     }
+    await novaWalletRefresh(p);
     var short = novaAccount.slice(0, 6) + "…" + novaAccount.slice(-4);
     document.getElementById("connectBtn").textContent = "Connected: " + short;
     var own = "";
@@ -686,7 +719,6 @@ document.getElementById("connectBtn").onclick = async function(){
     }
     var agentNote = " · Agent ID check is BNB-only and does not apply on Elysium — mint here has no Agent ID gate.";
     if (msg) msg.innerHTML = "Connected: " + novaAccount + own + agentNote;
-    novaRefresh();
   } catch (e) { if (msg) msg.textContent = "Failed to connect: " + (e && e.message ? e.message : e); }
 };
 document.getElementById("mint").onclick = async function(){
@@ -694,8 +726,10 @@ document.getElementById("mint").onclick = async function(){
   if (!NOVA_CONTRACT) { if (msg) msg.textContent = "Contract address is not configured."; return; }
   var p = novaProvider();
   if (!p) { if (msg) msg.innerHTML = "Wallet not found — open this page in the OKX / MetaMask dApp browser."; return; }
-  if (!novaAccount) { if (msg) msg.innerHTML = "Connect your wallet first (Connect wallet, top of page)."; return; }
+  if (!novaAccount) { await document.getElementById("connectBtn").onclick(); return; }
+  var checkingOnly = !NOVA_STATE_VERIFIED;
   try {
+    if (checkingOnly) { await novaWalletRefresh(p); return; }
     var chainId = await p.request({method:"eth_chainId"});
     if (String(chainId).toLowerCase() !== "0x1863d") throw new Error("Switch your wallet to Elysium (chain 99901) first.");
     var liveState = await Promise.all([
@@ -725,7 +759,10 @@ document.getElementById("mint").onclick = async function(){
         } else if (tries > 60) { clearInterval(timer); if (msg) msg.innerHTML = "Transaction not confirmed yet after waiting — check <a href=\"https://elysium.kinetiq.xyz/explorer/tx/" + txHash + "\">Elysium Explorer</a>"; }
       } catch (e) {}
     }, 3000);
-  } catch (e) { if (msg) msg.textContent = "Mint failed / cancelled: " + (e && e.message ? e.message : e); }
+  } catch (e) {
+    if (checkingOnly) novaSetMintState(false, "", true);
+    if (msg) msg.textContent = (checkingOnly ? "Status check failed: " : "Mint failed / cancelled: ") + (e && e.message ? e.message : e);
+  }
 };
 novaRefresh();
 setInterval(novaRefresh, 30000);
