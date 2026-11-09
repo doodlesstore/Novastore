@@ -1,0 +1,108 @@
+# Publish the repository unchanged; no Jekyll build or wallet transaction is run.
+name: Publish static site to Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Do not abandon an in-flight Pages sync when another commit arrives.
+concurrency:
+  group: novastore-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Upload unchanged static site
+        id: artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: .
+      # deploy-pages@v5 caps polling at 10 minutes, cancelling slow file syncs.
+      # Keep the same official Pages API and OIDC checks, but allow 30 minutes.
+      - name: Publish and wait for Pages
+        id: deployment
+        uses: actions/github-script@v8
+        env:
+          PAGES_ARTIFACT_ID: ${{ steps.artifact.outputs.artifact_id }}
+        with:
+          script: |
+            const artifactId = Number(process.env.PAGES_ARTIFACT_ID);
+            if (!Number.isSafeInteger(artifactId) || artifactId <= 0) {
+              throw new Error('No valid Pages artifact ID was uploaded.');
+            }
+            const oidcToken = await core.getIDToken();
+            core.setSecret(oidcToken);
+            const { data: deployment } = await github.request(
+              'POST /repos/{owner}/{repo}/pages/deployments', {
+                ...context.repo,
+                artifact_id: artifactId,
+                pages_build_version: context.sha,
+                oidc_token: oidcToken
+              }
+            );
+            const deploymentId = String(deployment.id || context.sha);
+            core.setOutput('page_url', deployment.page_url);
+            core.info(`Created Pages deployment ${deploymentId} for ${context.sha}`);
+            const params = { ...context.repo, pages_deployment_id: deploymentId };
+            const finalErrors = new Set([
+              'deployment_failed', 'deployment_content_failed',
+              'deployment_cancelled', 'deployment_lost'
+            ]);
+            const deadline = Date.now() + 30 * 60 * 1000;
+            let pending = true;
+            let errors = 0;
+            try {
+              while (Date.now() < deadline) {
+                await new Promise(resolve => setTimeout(resolve, 15000));
+                let result;
+                try {
+                  ({ data: result } = await github.request(
+                    'GET /repos/{owner}/{repo}/pages/deployments/{pages_deployment_id}', params
+                  ));
+                  errors = 0;
+                } catch (error) {
+                  errors += 1;
+                  core.warning(`Pages status check unavailable (HTTP ${error.status || 'unknown'}).`);
+                  if (errors >= 10) throw new Error('Ten consecutive Pages status checks failed.');
+                  continue;
+                }
+                core.info(`Pages status: ${result.status}`);
+                if (result.status === 'succeed') {
+                  pending = false;
+                  core.info(`Published successfully: ${deployment.page_url}`);
+                  return;
+                }
+                if (finalErrors.has(result.status)) {
+                  pending = false;
+                  throw new Error(`Pages deployment ended with ${result.status}.`);
+                }
+              }
+              throw new Error('Pages file sync did not finish within 30 minutes.');
+            } finally {
+              if (pending) {
+                try {
+                  await github.request(
+                    'POST /repos/{owner}/{repo}/pages/deployments/{pages_deployment_id}/cancel', params
+                  );
+                  core.warning('Cancelled the unfinished Pages deployment to avoid leaving an orphan.');
+                } catch (error) {
+                  core.warning(`Could not cancel the unfinished deployment (HTTP ${error.status || 'unknown'}).`);
+                }
+              }
+            }
