@@ -620,19 +620,22 @@ function novaDecodeString(h){
   } catch (e) { return ""; }
 }
 function novaBaseUriMatches(uri){ return String(uri || "").trim().replace(/\/+$/, "") + "/" === NOVA_BASE_URI; }
+var NOVA_RPCS = ["https://rpc.elysium.kinetiq.xyz", "https://rpc-live.elysp.com/"];
 async function novaRpc(method, params){
-  var controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-  var timeout = controller ? setTimeout(function(){ controller.abort(); }, 10000) : null;
-  var r;
-  try {
-    r = await fetch("https://rpc-live.elysp.com/", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({jsonrpc:"2.0", id:Date.now(), method:method, params:params}), signal:controller ? controller.signal : undefined});
-  } finally {
-    if (timeout) clearTimeout(timeout);
+  var lastErr = null;
+  for (var i = 0; i < NOVA_RPCS.length; i++) {
+    var controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    var timeout = controller ? setTimeout(function(){ controller.abort(); }, 8000) : null;
+    try {
+      var r = await fetch(NOVA_RPCS[i], {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({jsonrpc:"2.0", id:Date.now(), method:method, params:params}), signal:controller ? controller.signal : undefined});
+      if (!r.ok) throw new Error("Elysium RPC returned " + r.status);
+      var j = await r.json();
+      if (!j || j.error || typeof j.result === "undefined") throw new Error(j && j.error && j.error.message ? j.error.message : "Elysium contract read failed");
+      return j.result;
+    } catch (e) { lastErr = e; }
+    finally { if (timeout) clearTimeout(timeout); }
   }
-  if (!r.ok) throw new Error("Elysium RPC returned " + r.status);
-  var j = await r.json();
-  if (!j || j.error || typeof j.result === "undefined") throw new Error(j && j.error && j.error.message ? j.error.message : "Elysium contract read failed");
-  return j.result;
+  throw lastErr || new Error("All Elysium RPC endpoints failed");
 }
 async function novaContractRead(data){ return novaRpc("eth_call", [{to:NOVA_CONTRACT, data:data}, "latest"]); }
 function novaSetMintState(isOpen, baseUri, failed){
