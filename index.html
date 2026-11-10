@@ -129,7 +129,6 @@
 </style>
 </head>
 <body>
-<div style="background:#1a1033;border:1px solid #8f7bff;color:#f1ecf4;padding:12px 16px;margin:0 0 18px;font-size:13px;line-height:1.6"><b>ELYSIUM VERSION — Kinetiq Elysium Mainnet (chain 99901, gas HYPE).</b> Kontrak Nova Elysium Stone (NOVA) sudah terpasang di <a href="https://elysium.kinetiq.xyz/explorer/address/0x8c5dbcd7d2eaa2df290ecc944371e18523a1bf2c" target="_blank" rel="noopener">0x8c5DBcd7D2eaa2Df290eCc944371e18523A1bF2c</a>. Mint tetap hanya dari wallet pribadi pengguna—tidak ada mint oleh agent. Situs hanya mengaktifkan tombol mint setelah baseURI on-chain sama dengan <code>https://novacommerce.id/nova/json/</code> dan mintOpen bernilai true. Kontrak lama BNB (328 minted, nama Nova Stone) tetap di BNB.</div>
 <div class="wrap">
   <header>
     <a class="logo" href="#">
@@ -647,6 +646,15 @@ function novaSetMintState(isOpen, baseUri, failed){
   if (btn) {
     btn.disabled = failed ? false : !ready;
     btn.textContent = ready ? "Mint Nova Elysium Stone · 0.003 HYPE + gas" : (failed ? (novaAccount ? "Check mint status in wallet" : "Connect wallet to check mint status") : "Mint paused — setup required");
+  }
+  var latEl = document.getElementById("latest");
+  if (latEl && !failed) {
+    var latTxt = latEl.textContent || "";
+    if (latTxt.indexOf("Mint not open yet") !== -1 || latTxt.indexOf("No Novas minted yet") !== -1) {
+      latEl.innerHTML = ready
+        ? '<div class="empty"><b>Mint is open</b><span>No Novas minted yet \u2014 be the first: connect your wallet above and mint your Nova Elysium Stone.</span></div>'
+        : '<div class="empty"><b>Mint not open yet</b><span>The contract is deployed. Mint is only available after the correct metadata baseURI is set and verified.</span></div>';
+    }
   }
   if (!msg) return;
   if (failed) msg.textContent = novaAccount ? "Could not verify live contract settings. Check that your wallet is on Elysium and retry the status check; checking status sends no transaction." : "Could not verify live contract settings from the public RPC. Connect your wallet to check the latest status on Elysium; mint is not being claimed ready.";
